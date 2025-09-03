@@ -1,0 +1,317 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Images to PDF Converter - Convert Multiple Images to Single PDF</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="Convert multiple images to a single PDF file. Drop images, reorder them, take photos with your camera, and download as one PDF. Fast, free, and works offline." />
+  <meta name="keywords" content="images to PDF, convert images, PDF converter, combine images, photo to PDF, image merger, PDF creator" />
+  <meta name="author" content="Images to PDF Converter" />
+  
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="" />
+  <meta property="og:title" content="Images to PDF Converter - Convert Multiple Images to Single PDF" />
+  <meta property="og:description" content="Convert multiple images to a single PDF file. Drop images, reorder them, take photos with your camera, and download as one PDF. Fast, free, and works offline." />
+  <meta property="og:image" content="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%230b0c10'/%3E%3Ctext x='50' y='35' font-family='system-ui' font-size='20' fill='%236aa7ff' text-anchor='middle'%3E📄%3C/text%3E%3Ctext x='50' y='55' font-family='system-ui' font-size='8' fill='%23e8eaf0' text-anchor='middle'%3EIMAGES%3C/text%3E%3Ctext x='50' y='70' font-family='system-ui' font-size='8' fill='%23e8eaf0' text-anchor='middle'%3ETO PDF%3C/text%3E%3C/svg%3E" />
+  
+  <!-- Twitter -->
+  <meta property="twitter:card" content="summary_large_image" />
+  <meta property="twitter:url" content="" />
+  <meta property="twitter:title" content="Images to PDF Converter - Convert Multiple Images to Single PDF" />
+  <meta property="twitter:description" content="Convert multiple images to a single PDF file. Drop images, reorder them, take photos with your camera, and download as one PDF. Fast, free, and works offline." />
+  <meta property="twitter:image" content="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%230b0c10'/%3E%3Ctext x='50' y='35' font-family='system-ui' font-size='20' fill='%236aa7ff' text-anchor='middle'%3E📄%3C/text%3E%3Ctext x='50' y='55' font-family='system-ui' font-size='8' fill='%23e8eaf0' text-anchor='middle'%3EIMAGES%3C/text%3E%3Ctext x='50' y='70' font-family='system-ui' font-size='8' fill='%23e8eaf0' text-anchor='middle'%3ETO PDF%3C/text%3E%3C/svg%3E" />
+  
+  <!-- Favicons -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%230b0c10'/%3E%3Ctext x='50' y='60' font-family='system-ui' font-size='40' text-anchor='middle'%3E📄%3C/text%3E%3C/svg%3E" />
+  <link rel="icon" type="image/png" sizes="32x32" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%230b0c10'/%3E%3Ctext x='50' y='60' font-family='system-ui' font-size='40' text-anchor='middle'%3E📄%3C/text%3E%3C/svg%3E" />
+  <link rel="icon" type="image/png" sizes="16x16" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%230b0c10'/%3E%3Ctext x='50' y='60' font-family='system-ui' font-size='40' text-anchor='middle'%3E📄%3C/text%3E%3C/svg%3E" />
+  <link rel="apple-touch-icon" sizes="180x180" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%230b0c10' rx='20'/%3E%3Ctext x='50' y='60' font-family='system-ui' font-size='40' text-anchor='middle'%3E📄%3C/text%3E%3C/svg%3E" />
+  
+  <!-- Additional SEO and PWA meta tags -->
+  <meta name="theme-color" content="#0b0c10" />
+  <meta name="msapplication-TileColor" content="#0b0c10" />
+  <meta name="robots" content="index, follow" />
+  <meta name="googlebot" content="index, follow" />
+  <meta name="format-detection" content="telephone=no" />
+  <link rel="canonical" href="" />
+  
+  <!-- PWA Manifest -->
+  <link rel="manifest" href="data:application/json;base64,ewogICJuYW1lIjogIkltYWdlcyB0byBQREYgQ29udmVydGVyIiwKICAic2hvcnRfbmFtZSI6ICJJbWcyUERGIiwKICAiZGVzY3JpcHRpb24iOiAiQ29udmVydCBtdWx0aXBsZSBpbWFnZXMgdG8gYSBzaW5nbGUgUERGIGZpbGUiLAogICJzdGFydF91cmwiOiAiLiIsCiAgImRpc3BsYXkiOiAic3RhbmRhbG9uZSIsCiAgImJhY2tncm91bmRfY29sb3IiOiAiIzBiMGMxMCIsCiAgInRoZW1lX2NvbG9yIjogIiMwYjBjMTAiLAogICJpY29ucyI6IFsKICAgIHsKICAgICAgInNyYyI6ICJkYXRhOmltYWdlL3N2Zyt4bWwsJTNDc3ZnIHhtbG5zPSdodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2Zycgdmlld0JveD0nMCAwIDEwMCAxMDAnJTNFJTNDcmVjdCB3aWR0aD0nMTAwJyBoZWlnaHQ9JzEwMCcgZmlsbD0nJTIzMGIwYzEwJyByeD0nMjAnLyUzRSUzQ3RleHQgeD0nNTAnIHk9JzYwJyBmb250LWZhbWlseT0nc3lzdGVtLXVpJyBmb250LXNpemU9JzQwJyB0ZXh0LWFuY2hvcj0nbWlkZGxlJyUzRSVGMCU5RiU5MyU4NCUzQy90ZXh0JTNFJTNDL3N2ZyUzRSIsCiAgICAgICJzaXplcyI6ICIxOTJ4MTkyIiwKICAgICAgInR5cGUiOiAiaW1hZ2Uvc3ZnK3htbCIKICAgIH0KICBdCn0=" />
+  
+  <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+  <script src="https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
+  <style>
+    :root { --bg:#0b0c10; --fg:#e8eaf0; --muted:#9aa5bd; --accent:#6aa7ff; --accent2:#7be0b8; --border:#1f2432; }
+    * { box-sizing: border-box; }
+    html, body { margin:0; background:var(--bg); color:var(--fg); font-family: system-ui,-apple-system,Segoe UI,Roboto,Arial; }
+    h1 { font-size:22px; margin:18px 0 6px; }
+    h2 { font-size:18px; margin:24px 0 12px; }
+    .sub { color:var(--muted); font-size:14px; margin-bottom:16px }
+
+    .wrap { max-width:1000px; margin:0 auto 60px; padding:0 16px; }
+
+    /* Dropzone */
+    #dropzone {
+      height:55vh; min-height:300px;
+      border:4px dashed var(--accent);
+      border-radius:18px;
+      display:flex; flex-direction:column; justify-content:center; align-items:center;
+      background:#0f1622;
+      cursor:pointer;
+      transition:.2s;
+    }
+    #dropzone.hover { background:#111d2f; border-color:var(--accent2); }
+    #dropzone input{display:none}
+    .dz-title { font-size:24px; margin-bottom:6px }
+    .dz-sub { font-size:14px; color:var(--muted) }
+
+    /* Grid */
+    #grid {
+      display:grid; grid-template-columns:repeat(auto-fill,minmax(170px,1fr));
+      gap:12px; margin-top:20px;
+    }
+    .thumb {
+      position:relative; border:1px solid var(--border); border-radius:12px;
+      overflow:hidden; background:#101827; cursor:grab;
+    }
+    .thumb.dragover{outline:2px solid var(--accent)}
+    .thumb img{width:100%; height:150px; object-fit:cover; display:block; transition:transform 0.3s ease;}
+    .idx{position:absolute; left:6px; top:6px; background:#18253b; color:#a9c5ff;
+      border:1px solid #223556; border-radius:999px; font-size:12px; padding:2px 6px}
+    .rm{position:absolute; right:6px; top:6px; width:24px; height:24px; border:none;
+      border-radius:8px; background:#ff6b6b; color:#1b0d0d; font-weight:900; cursor:pointer;}
+    .rotate{position:absolute; left:6px; bottom:6px; width:24px; height:24px; border:none;
+      border-radius:8px; background:#6aa7ff; color:#fff; font-size:12px; cursor:pointer; display:flex; align-items:center; justify-content:center;}
+
+    /* Buttons */
+    .actions{margin-top:18px; display:flex; gap:10px; flex-wrap:wrap; align-items:center}
+    button{border:none; border-radius:10px; padding:10px 14px; font-weight:600; cursor:pointer}
+    #makeBtn{background:#3e7bf4; color:#fff}
+    #clearBtn{background:#2d364d; color:#e3e9f7}
+    #rotateBtn{background:#2d364d; color:#e3e9f7; min-width:80px}
+    button:disabled{opacity:.55; cursor:not-allowed}
+    
+    /* Camera Section */
+    .camera-section{margin-top:40px; padding-top:24px; border-top:1px solid var(--border)}
+    .camera-container{display:flex; justify-content:center; margin-bottom:16px}
+    #camera{max-width:100%; max-height:600px; border-radius:12px; border:1px solid var(--border); background:#101827}
+    .camera-actions{display:flex; gap:10px; justify-content:center; flex-wrap:wrap}
+    
+    /* Filename Section */
+    .filename-section{margin-top:16px; display:flex; align-items:center; gap:8px; font-size:14px}
+    .filename-section label{color:var(--fg); font-weight:600}
+    #filenameInput{padding:8px 12px; border:1px solid var(--border); border-radius:8px; background:#101827; color:var(--fg); font-size:14px; min-width:200px}
+    #filenameInput:focus{outline:none; border-color:var(--accent)}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Images → One PDF</h1>
+    <div class="sub">Drop, reorder, and download as one PDF.</div>
+
+    <label id="dropzone">
+      <input id="fileInput" type="file" accept="image/*,application/pdf" multiple />
+      <div class="dz-title">📥 Drop images or PDFs here</div>
+      <div class="dz-sub">PDFs will be converted to images</div>
+    </label>
+
+    <div id="grid"></div>
+
+    <div class="filename-section">
+      <label for="filenameInput">Filename:</label>
+      <input type="text" id="filenameInput" value="images" placeholder="Enter filename">
+    </div>
+
+    <div class="actions">
+      <button id="makeBtn" disabled>Download PDF</button>
+      <button id="clearBtn" disabled>Clear</button>
+      <button id="rotateBtn">Rotate</button>
+    </div>
+
+    <div class="camera-section">
+      <h2>📷 Take Photos</h2>
+      <div class="camera-container">
+        <video id="camera" autoplay playsinline></video>
+        <canvas id="canvas" style="display:none;"></canvas>
+      </div>
+      <div class="camera-actions">
+        <button id="startCameraBtn">Start Camera</button>
+        <button id="captureBtn" disabled>Capture Photo</button>
+        <button id="stopCameraBtn" disabled>Stop Camera</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const dropzone=document.getElementById('dropzone');
+    const fileInput=document.getElementById('fileInput');
+    const grid=document.getElementById('grid');
+    const makeBtn=document.getElementById('makeBtn');
+    const clearBtn=document.getElementById('clearBtn');
+    const rotateBtn=document.getElementById('rotateBtn');
+    const camera=document.getElementById('camera');
+    const canvas=document.getElementById('canvas');
+    const startCameraBtn=document.getElementById('startCameraBtn');
+    const captureBtn=document.getElementById('captureBtn');
+    const stopCameraBtn=document.getElementById('stopCameraBtn');
+    const filenameInput=document.getElementById('filenameInput');
+    let images=[];
+    let rotationAngle=0;
+    let stream=null;
+
+    function enableButtons(){makeBtn.disabled=clearBtn.disabled=images.length===0}
+    function createThumb(item,idx){
+      const el=document.createElement('div'); el.className='thumb'; el.draggable=true; el.dataset.index=idx;
+      const totalRotation = (rotationAngle + item.rotation) % 360;
+      const img=document.createElement('img'); img.src=item.url; img.style.transform=`rotate(${totalRotation}deg)`;
+      const chip=document.createElement('div'); chip.className='idx'; chip.textContent=idx+1;
+      const rm=document.createElement('button'); rm.className='rm'; rm.textContent='×'; rm.onclick=()=>{images.splice(idx,1);URL.revokeObjectURL(item.url);renderGrid()};
+      const rotate=document.createElement('button'); rotate.className='rotate'; rotate.textContent='↻'; rotate.onclick=(e)=>{e.stopPropagation();item.rotation=(item.rotation+90)%360;renderGrid()};
+      el.addEventListener('dragstart',e=>e.dataTransfer.setData('text/plain',idx));
+      el.addEventListener('dragover',e=>{e.preventDefault();el.classList.add('dragover')});
+      el.addEventListener('dragleave',()=>el.classList.remove('dragover'));
+      el.addEventListener('drop',e=>{e.preventDefault();el.classList.remove('dragover');const from=+e.dataTransfer.getData('text/plain'),to=+el.dataset.index;
+        if(!isNaN(from)&&!isNaN(to)&&from!==to){images.splice(to,0,images.splice(from,1)[0]);renderGrid();}});
+      el.append(img,chip,rm,rotate); return el;
+    }
+    function renderGrid(){grid.innerHTML='';images.forEach((it,i)=>grid.appendChild(createThumb(it,i)));enableButtons();}
+    async function addFiles(fs){
+      for(const f of fs){
+        if(f.type.startsWith('image/')){
+          images.push({file:f,url:URL.createObjectURL(f),name:f.name,rotation:0});
+        }else if(f.type==='application/pdf'){
+          await convertPdfToImages(f);
+        }
+      }
+      renderGrid();
+    }
+
+    dropzone.ondragover=e=>{e.preventDefault();dropzone.classList.add('hover')};
+    dropzone.ondragleave=()=>dropzone.classList.remove('hover');
+    dropzone.ondrop=e=>{e.preventDefault();dropzone.classList.remove('hover');addFiles(e.dataTransfer.files)};
+    dropzone.onclick=()=>fileInput.click();
+    fileInput.onchange=e=>addFiles(e.target.files);
+
+    clearBtn.onclick=()=>{images.forEach(i=>URL.revokeObjectURL(i.url));images=[];renderGrid();window.scrollTo({top:0,behavior:'smooth'});};
+
+    rotateBtn.onclick=()=>{rotationAngle=(rotationAngle+90)%360;renderGrid();};
+
+    startCameraBtn.onclick=async()=>{
+      try{
+        // Check if getUserMedia is supported
+        if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){
+          alert('Camera not supported in this browser');return;
+        }
+        
+        startCameraBtn.textContent='Requesting access...';startCameraBtn.disabled=true;
+        
+        // Try to get camera stream with fallback options
+        let constraints={video:{facingMode:'environment'}};
+        try{
+          stream=await navigator.mediaDevices.getUserMedia(constraints);
+        }catch(envError){
+          // Fallback to any camera if environment camera fails
+          constraints={video:true};
+          stream=await navigator.mediaDevices.getUserMedia(constraints);
+        }
+        
+        camera.srcObject=stream;captureBtn.disabled=false;stopCameraBtn.disabled=false;
+        startCameraBtn.textContent='Start Camera';
+      }catch(e){
+        startCameraBtn.disabled=false;startCameraBtn.textContent='Start Camera';
+        if(e.name==='NotAllowedError'){
+          alert('Camera access denied. Please click "Allow" or check your browser settings to enable camera access.');
+        }else if(e.name==='NotFoundError'){
+          alert('No camera found on this device.');
+        }else if(e.name==='NotReadableError'){
+          alert('Camera is already in use by another application.');
+        }else if(e.name==='OverconstrainedError'){
+          alert('Camera constraints could not be satisfied.');
+        }else if(e.name==='SecurityError'){
+          alert('Camera access blocked due to security restrictions. Try using HTTPS.');
+        }else{
+          alert('Camera error: '+e.message||'Unknown error occurred');
+        }
+      }
+    };
+
+    stopCameraBtn.onclick=()=>{
+      if(stream){stream.getTracks().forEach(track=>track.stop());stream=null;}
+      camera.srcObject=null;startCameraBtn.disabled=false;captureBtn.disabled=true;stopCameraBtn.disabled=true;
+    };
+
+    captureBtn.onclick=()=>{
+      const ctx=canvas.getContext('2d');canvas.width=camera.videoWidth;canvas.height=camera.videoHeight;
+      ctx.drawImage(camera,0,0);canvas.toBlob(blob=>{
+        const file=new File([blob],`photo-${Date.now()}.png`,{type:'image/png'});
+        images.push({file,url:URL.createObjectURL(blob),name:file.name,rotation:0});renderGrid();
+      },'image/png',0.95);
+    };
+
+    async function embedImage(pdfDoc,file){
+      const type=file.type.toLowerCase(),bytes=await file.arrayBuffer();
+      if(type.includes('png'))return pdfDoc.embedPng(bytes);
+      if(type.includes('jpg')||type.includes('jpeg'))return pdfDoc.embedJpg(bytes);
+      const bmp=await createImageBitmap(file),c=document.createElement('canvas');
+      c.width=bmp.width;c.height=bmp.height;c.getContext('2d').drawImage(bmp,0,0);
+      const arr=await new Promise(r=>c.toBlob(b=>b.arrayBuffer().then(r),'image/png'));
+      return pdfDoc.embedPng(arr);
+    }
+
+    async function makePdf(){
+      if(!images.length)return;makeBtn.disabled=true;makeBtn.textContent='Working…';
+      try{const pdf=await PDFLib.PDFDocument.create();
+        for(const it of images){const img=await embedImage(pdf,it.file);
+          const totalRotation = (rotationAngle + it.rotation) % 360;
+          let pageWidth,pageHeight,x,y,rotation;
+          switch(totalRotation){
+            case 0:pageWidth=img.width;pageHeight=img.height;x=0;y=0;rotation=0;break;
+            case 90:pageWidth=img.height;pageHeight=img.width;x=0;y=img.width;rotation=-90;break;
+            case 180:pageWidth=img.width;pageHeight=img.height;x=img.width;y=img.height;rotation=180;break;
+            case 270:pageWidth=img.height;pageHeight=img.width;x=img.height;y=0;rotation=90;break;}
+          const p=pdf.addPage([pageWidth,pageHeight]);
+          p.drawImage(img,{x,y,width:img.width,height:img.height,rotate:PDFLib.degrees(rotation)});}
+        const bytes=await pdf.save();const blob=new Blob([bytes],{type:'application/pdf'});const url=URL.createObjectURL(blob);
+        const filename=filenameInput.value.trim()||'images';
+        const a=document.createElement('a');a.href=url;a.download=filename+'.pdf';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1200);}
+      catch(e){alert(e.message||'Failed');}
+      finally{makeBtn.disabled=images.length===0;makeBtn.textContent='Download PDF';}
+    }
+    makeBtn.onclick=makePdf;
+
+    // PDF to Images Conversion
+    async function convertPdfToImages(pdfFile){
+      try{
+        const pdfData=await pdfFile.arrayBuffer();
+        const pdf=await pdfjsLib.getDocument({data:pdfData}).promise;
+        
+        for(let pageNum=1;pageNum<=pdf.numPages;pageNum++){
+          const page=await pdf.getPage(pageNum);
+          const scale=2.0;
+          const viewport=page.getViewport({scale});
+          
+          const canvas=document.createElement('canvas');
+          const ctx=canvas.getContext('2d');
+          canvas.width=viewport.width;
+          canvas.height=viewport.height;
+          
+          await page.render({canvasContext:ctx,viewport}).promise;
+          
+          const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/png',0.95));
+          const fileName=`${pdfFile.name.replace('.pdf','')}_page_${pageNum}.png`;
+          const file=new File([blob],fileName,{type:'image/png'});
+          
+          images.push({file,url:URL.createObjectURL(blob),name:fileName,rotation:0});
+        }
+      }catch(error){
+        console.error('PDF conversion error:',error);
+        alert('Failed to convert PDF: '+error.message);
+      }
+    }
+    
+    // Configure PDF.js worker
+    pdfjsLib.GlobalWorkerOptions.workerSrc='https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+  </script>
+</body>
+</html>
