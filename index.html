@@ -95,7 +95,7 @@
     /* Camera Section */
     .camera-section{margin-top:40px; padding-top:24px; border-top:1px solid var(--border)}
     .camera-container{display:flex; justify-content:center; margin-bottom:16px}
-    #camera{max-width:100%; max-height:600px; border-radius:12px; border:1px solid var(--border); background:#101827}
+    #camera{max-width:100%; max-height:80vh; min-height:500px; border-radius:12px; border:1px solid var(--border); background:#101827}
     .camera-actions{display:flex; gap:10px; justify-content:center; flex-wrap:wrap}
     
     /* Filename Section */
@@ -206,13 +206,13 @@
         
         startCameraBtn.textContent='Requesting access...';startCameraBtn.disabled=true;
         
-        // Try to get camera stream with fallback options
-        let constraints={video:{facingMode:'environment'}};
+        // Try to get camera stream with high quality settings
+        let constraints={video:{facingMode:'environment',width:{ideal:1920},height:{ideal:1080},frameRate:{ideal:30}}};
         try{
           stream=await navigator.mediaDevices.getUserMedia(constraints);
         }catch(envError){
-          // Fallback to any camera if environment camera fails
-          constraints={video:true};
+          // Fallback to any camera with high quality if environment camera fails
+          constraints={video:{width:{ideal:1920},height:{ideal:1080},frameRate:{ideal:30}}};
           stream=await navigator.mediaDevices.getUserMedia(constraints);
         }
         
@@ -242,11 +242,19 @@
     };
 
     captureBtn.onclick=()=>{
-      const ctx=canvas.getContext('2d');canvas.width=camera.videoWidth;canvas.height=camera.videoHeight;
-      ctx.drawImage(camera,0,0);canvas.toBlob(blob=>{
+      const ctx=canvas.getContext('2d');
+      // Capture at higher resolution for better quality
+      const scale=2;
+      canvas.width=camera.videoWidth*scale;
+      canvas.height=camera.videoHeight*scale;
+      ctx.scale(scale,scale);
+      ctx.imageSmoothingEnabled=true;
+      ctx.imageSmoothingQuality='high';
+      ctx.drawImage(camera,0,0);
+      canvas.toBlob(blob=>{
         const file=new File([blob],`photo-${Date.now()}.png`,{type:'image/png'});
         images.push({file,url:URL.createObjectURL(blob),name:file.name,rotation:0});renderGrid();
-      },'image/png',0.95);
+      },'image/png',1.0);
     };
 
     async function embedImage(pdfDoc,file){
@@ -288,7 +296,7 @@
         
         for(let pageNum=1;pageNum<=pdf.numPages;pageNum++){
           const page=await pdf.getPage(pageNum);
-          const scale=2.0;
+          const scale=3.0;
           const viewport=page.getViewport({scale});
           
           const canvas=document.createElement('canvas');
