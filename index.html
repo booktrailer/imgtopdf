@@ -98,6 +98,26 @@
     #camera{max-width:100%; max-height:80vh; min-height:500px; border-radius:12px; border:1px solid var(--border); background:#101827}
     .camera-actions{display:flex; gap:10px; justify-content:center; flex-wrap:wrap}
     
+    /* Flash Animation */
+    .flash-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: white;
+      z-index: 9999;
+      opacity: 0;
+      pointer-events: none;
+      animation: flash 0.3s ease-out;
+    }
+    
+    @keyframes flash {
+      0% { opacity: 0; }
+      50% { opacity: 0.8; }
+      100% { opacity: 0; }
+    }
+    
     /* Filename Section */
     .filename-section{margin-top:16px; display:flex; align-items:center; gap:8px; font-size:14px}
     .filename-section label{color:var(--fg); font-weight:600}
@@ -241,7 +261,21 @@
       camera.srcObject=null;startCameraBtn.disabled=false;captureBtn.disabled=true;stopCameraBtn.disabled=true;
     };
 
+    function triggerFlash() {
+      const flashOverlay = document.createElement('div');
+      flashOverlay.className = 'flash-overlay';
+      document.body.appendChild(flashOverlay);
+      
+      // Remove the flash overlay after animation completes
+      setTimeout(() => {
+        document.body.removeChild(flashOverlay);
+      }, 300);
+    }
+
     captureBtn.onclick=()=>{
+      // Trigger flash effect
+      triggerFlash();
+      
       const ctx=canvas.getContext('2d');
       // Capture at higher resolution for better quality
       const scale=2;
