@@ -41,6 +41,7 @@
   
   <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
   <script src="https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
+  <script async src="https://docs.opencv.org/4.8.0/opencv.js" onload="onOpenCvReady();" type="text/javascript"></script>
   <style>
     :root { --bg:#0b0c10; --fg:#e8eaf0; --muted:#9aa5bd; --accent:#6aa7ff; --accent2:#7be0b8; --border:#1f2432; }
     * { box-sizing: border-box; }
@@ -141,6 +142,15 @@
     <div class="filename-section">
       <label for="filenameInput">Filename:</label>
       <input type="text" id="filenameInput" value="images" placeholder="Enter filename">
+      <label for="cornerDetectionCheckbox" style="margin-left: 20px;">
+        <input type="checkbox" id="cornerDetectionCheckbox" style="margin-right: 5px;">
+        Corner Detection & Warp (Experimental)
+      </label>
+      <label for="qualitySlider" style="margin-left: 20px;">
+        Quality:
+        <input type="range" id="qualitySlider" min="60" max="95" value="85" style="margin: 0 5px;">
+        <span id="qualityValue">85%</span>
+      </label>
     </div>
 
     <div class="actions">
@@ -176,9 +186,44 @@
     const captureBtn=document.getElementById('captureBtn');
     const stopCameraBtn=document.getElementById('stopCameraBtn');
     const filenameInput=document.getElementById('filenameInput');
+    const qualitySlider=document.getElementById('qualitySlider');
+    const qualityValue=document.getElementById('qualityValue');
     let images=[];
     let rotationAngle=0;
     let stream=null;
+    
+    // Update quality display when slider changes
+    qualitySlider.oninput=()=>{
+      qualityValue.textContent=qualitySlider.value+'%';
+    };
+    
+    // Document optimization function for better quality and smaller file size
+    function optimizeDocumentImage(canvas) {
+      const ctx = canvas.getContext('2d');
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const data = imageData.data;
+      
+      // Enhance contrast and brightness for document text
+      for (let i = 0; i < data.length; i += 4) {
+        const gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+        
+        // Increase contrast for text clarity
+        const contrast = 1.3;
+        const brightness = 10;
+        
+        let r = (data[i] - 128) * contrast + 128 + brightness;
+        let g = (data[i + 1] - 128) * contrast + 128 + brightness;
+        let b = (data[i + 2] - 128) * contrast + 128 + brightness;
+        
+        // Clamp values
+        data[i] = Math.max(0, Math.min(255, r));
+        data[i + 1] = Math.max(0, Math.min(255, g));
+        data[i + 2] = Math.max(0, Math.min(255, b));
+      }
+      
+      ctx.putImageData(imageData, 0, 0);
+      return canvas;
+    }
 
     function enableButtons(){makeBtn.disabled=clearBtn.disabled=images.length===0}
     function createThumb(item,idx){
@@ -277,8 +322,8 @@
       triggerFlash();
       
       const ctx=canvas.getContext('2d');
-      // Capture at higher resolution for better quality
-      const scale=2;
+      // Optimized resolution for document scanning
+      const scale=1.5; // Reduced from 2x to balance quality and file size
       canvas.width=camera.videoWidth*scale;
       canvas.height=camera.videoHeight*scale;
       ctx.scale(scale,scale);
@@ -286,25 +331,61 @@
       ctx.imageSmoothingQuality='high';
       ctx.drawImage(camera,0,0);
       canvas.toBlob(blob=>{
-        const file=new File([blob],`photo-${Date.now()}.png`,{type:'image/png'});
+        const file=new File([blob],`photo-${Date.now()}.jpg`,{type:'image/jpeg'});
         images.push({file,url:URL.createObjectURL(blob),name:file.name,rotation:0});renderGrid();
-      },'image/png',1.0);
+      },'image/jpeg',qualitySlider.value/100); // Use dynamic quality setting
     };
 
     async function embedImage(pdfDoc,file){
-      const type=file.type.toLowerCase(),bytes=await file.arrayBuffer();
-      if(type.includes('png'))return pdfDoc.embedPng(bytes);
-      if(type.includes('jpg')||type.includes('jpeg'))return pdfDoc.embedJpg(bytes);
-      const bmp=await createImageBitmap(file),c=document.createElement('canvas');
-      c.width=bmp.width;c.height=bmp.height;c.getContext('2d').drawImage(bmp,0,0);
-      const arr=await new Promise(r=>c.toBlob(b=>b.arrayBuffer().then(r),'image/png'));
-      return pdfDoc.embedPng(arr);
+      const type=file.type.toLowerCase();
+      let canvas;
+      
+      // Create canvas from image
+      if(type.includes('png') || type.includes('jpg') || type.includes('jpeg')) {
+        const bmp = await createImageBitmap(file);
+        canvas = document.createElement('canvas');
+        canvas.width = bmp.width;
+        canvas.height = bmp.height;
+        canvas.getContext('2d').drawImage(bmp, 0, 0);
+      } else {
+        const bmp = await createImageBitmap(file);
+        canvas = document.createElement('canvas');
+        canvas.width = bmp.width;
+        canvas.height = bmp.height;
+        canvas.getContext('2d').drawImage(bmp, 0, 0);
+      }
+      
+      // Apply corner detection and warping if enabled
+      if (cornerDetectionCheckbox.checked) {
+        canvas = detectCornersAndWarp(canvas);
+      }
+      
+      // Optimize image for document scanning
+      const optimizedCanvas = optimizeDocumentImage(canvas);
+      
+      // Convert canvas to optimized JPEG bytes for better compression
+      const quality = qualitySlider.value / 100;
+      const arr = await new Promise(r => optimizedCanvas.toBlob(b => b.arrayBuffer().then(r), 'image/jpeg', quality));
+      return pdfDoc.embedJpg(arr);
     }
 
     async function makePdf(){
-      if(!images.length)return;makeBtn.disabled=true;makeBtn.textContent='Working…';
+      if(!images.length)return;makeBtn.disabled=true;
+      
+      const originalText = makeBtn.textContent;
+      if (cornerDetectionCheckbox.checked) {
+        makeBtn.textContent = 'Processing with corner detection…';
+      } else {
+        makeBtn.textContent = 'Working…';
+      }
+      
       try{const pdf=await PDFLib.PDFDocument.create();
-        for(const it of images){const img=await embedImage(pdf,it.file);
+        for(let i = 0; i < images.length; i++){
+          const it = images[i];
+          if (cornerDetectionCheckbox.checked) {
+            makeBtn.textContent = `Processing image ${i + 1}/${images.length} with corner detection…`;
+          }
+          const img=await embedImage(pdf,it.file);
           const totalRotation = (rotationAngle + it.rotation) % 360;
           let pageWidth,pageHeight,x,y,rotation;
           switch(totalRotation){
@@ -314,6 +395,8 @@
             case 270:pageWidth=img.height;pageHeight=img.width;x=img.height;y=0;rotation=90;break;}
           const p=pdf.addPage([pageWidth,pageHeight]);
           p.drawImage(img,{x,y,width:img.width,height:img.height,rotate:PDFLib.degrees(rotation)});}
+        
+        makeBtn.textContent = 'Generating PDF…';
         const bytes=await pdf.save();const blob=new Blob([bytes],{type:'application/pdf'});const url=URL.createObjectURL(blob);
         const filename=filenameInput.value.trim()||'images';
         const a=document.createElement('a');a.href=url;a.download=filename+'.pdf';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1200);}
@@ -340,7 +423,8 @@
           
           await page.render({canvasContext:ctx,viewport}).promise;
           
-          const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/png',0.95));
+          const quality = qualitySlider.value / 100;
+          const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/jpeg',quality));
           const fileName=`${pdfFile.name.replace('.pdf','')}_page_${pageNum}.png`;
           const file=new File([blob],fileName,{type:'image/png'});
           
@@ -354,6 +438,879 @@
     
     // Configure PDF.js worker
     pdfjsLib.GlobalWorkerOptions.workerSrc='https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+
+    // OpenCV functionality
+    let openCvReady = false;
+    const cornerDetectionCheckbox = document.getElementById('cornerDetectionCheckbox');
+
+    function onOpenCvReady() {
+      openCvReady = true;
+      console.log('OpenCV.js is ready');
+    }
+
+    /**
+     * Detects a page-like quadrilateral in an image and warps it to a top-down view.
+     * @param {HTMLImageElement|HTMLCanvasElement} inputEl - Source image/canvas.
+     * @param {Object} [opts]
+     * @param {number} [opts.canny1=75] - Canny lower threshold.
+     * @param {number} [opts.canny2=200] - Canny upper threshold.
+     * @param {number} [opts.blur=5] - Gaussian blur kernel size (odd).
+     * @param {number} [opts.minAreaRatio=0.15] - Min contour area vs image area to consider as page.
+     * @param {boolean} [opts.debug=false] - If true, returns intermediate canvases.
+     * @returns {{
+     *   canvas: HTMLCanvasElement,               // Warped result (or best-effort if no quad found)
+     *   quad: [{x:number,y:number}]|null,        // Detected quad in source space (clockwise from top-left)
+     *   debug?: Record<string, HTMLCanvasElement>// Optional debug visuals
+     * }}
+     */
+    function detectAndWarpPage(inputEl, opts = {}) {
+      if (typeof cv === 'undefined') {
+        throw new Error('OpenCV.js not loaded. Include opencv.js and wait for cv.onRuntimeInitialized.');
+      }
+
+      const {
+        canny1 = 75,
+        canny2 = 200,
+        blur = 5,
+        minAreaRatio = 0.15,
+        debug = false,
+      } = opts;
+
+      // --- helpers ---
+      const toCanvas = (mat) => {
+        const c = document.createElement('canvas');
+        cv.imshow(c, mat);
+        return c;
+      };
+
+      const distance = (p1, p2) => Math.hypot(p1.x - p2.x, p1.y - p2.y);
+
+      // Order quad points: top-left, top-right, bottom-right, bottom-left
+      const orderQuad = (pts) => {
+        // pts: [{x,y}, ... 4]
+        const sum = pts.map(p => p.x + p.y);
+        const diff = pts.map(p => p.y - p.x);
+
+        const tl = pts[sum.indexOf(Math.min(...sum))];
+        const br = pts[sum.indexOf(Math.max(...sum))];
+        const tr = pts[diff.indexOf(Math.min(...diff))];
+        const bl = pts[diff.indexOf(Math.max(...diff))];
+        return [tl, tr, br, bl];
+      };
+
+      // Create a Mat from element
+      const matFromElement = (el) => {
+        const src = cv.imread(el); // handles <img> or <canvas>
+        return src;
+      };
+
+      // --- load source ---
+      const src = matFromElement(inputEl);
+      const srcArea = src.rows * src.cols;
+
+      // --- preprocess: grayscale, blur, edges ---
+      const gray = new cv.Mat();
+      const blurred = new cv.Mat();
+      const edges = new cv.Mat();
+
+      cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY, 0);
+      const k = Math.max(3, blur | 0) | 1; // ensure >=3 and odd
+      cv.GaussianBlur(gray, blurred, new cv.Size(k, k), 0, 0, cv.BORDER_DEFAULT);
+
+      // Strong contrast aid via adaptive threshold for robustness (optional)
+      const thresh = new cv.Mat();
+      cv.adaptiveThreshold(
+        blurred, thresh,
+        255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY, 11, 2
+      );
+
+      cv.Canny(thresh, edges, canny1, canny2);
+
+      // --- find contours ---
+      const contours = new cv.MatVector();
+      const hierarchy = new cv.Mat();
+      cv.findContours(edges, contours, hierarchy, cv.RETR_LIST, cv.CHAIN_APPROX_SIMPLE);
+
+      // Pick the largest 4-point contour above area threshold
+      let bestQuad = null;
+      let bestArea = 0;
+
+      for (let i = 0; i < contours.size(); i++) {
+        const c = contours.get(i);
+        const peri = cv.arcLength(c, true);
+        const approx = new cv.Mat();
+        cv.approxPolyDP(c, approx, 0.02 * peri, true);
+
+        if (approx.rows === 4) {
+          // Compute area
+          const pts = [];
+          for (let j = 0; j < 4; j++) {
+            const p = approx.intPtr(j);
+            pts.push({ x: p[0], y: p[1] });
+          }
+
+          // contour area (positive)
+          const area = Math.abs(cv.contourArea(approx, false));
+          if (area > bestArea && area > minAreaRatio * srcArea) {
+            bestArea = area;
+            bestQuad = pts;
+          }
+        }
+        approx.delete();
+      }
+
+      // If no 4-corner contour: fall back to largest contour's minAreaRect
+      if (!bestQuad) {
+        let largest = null, largestArea = 0;
+        for (let i = 0; i < contours.size(); i++) {
+          const c = contours.get(i);
+          const a = Math.abs(cv.contourArea(c, false));
+          if (a > largestArea) { largestArea = a; largest = c; }
+        }
+        if (largest) {
+          const rotRect = cv.minAreaRect(largest);
+          const box = cv.RotatedRect.points(rotRect); // returns 4 points
+          bestQuad = box.map(p => ({ x: p.x, y: p.y }));
+        }
+      }
+
+      // Still nothing? Return original
+      if (!bestQuad) {
+        const out = document.createElement('canvas');
+        cv.imshow(out, src);
+        // cleanup
+        src.delete(); gray.delete(); blurred.delete(); edges.delete();
+        thresh.delete(); contours.delete(); hierarchy.delete();
+        return { canvas: out, quad: null };
+      }
+
+      // --- warp perspective using ordered quad ---
+      const quad = orderQuad(bestQuad);
+
+      // Compute target size using quad side lengths
+      const widthA = distance(quad[2], quad[3]); // br-bl
+      const widthB = distance(quad[1], quad[0]); // tr-tl
+      const maxW = Math.max(widthA, widthB);
+
+      const heightA = distance(quad[1], quad[2]); // tr-br
+      const heightB = distance(quad[0], quad[3]); // tl-bl
+      const maxH = Math.max(heightA, heightB);
+
+      const dstW = Math.max(1, Math.round(maxW));
+      const dstH = Math.max(1, Math.round(maxH));
+
+      // Build transform
+      const srcTri = cv.matFromArray(4, 1, cv.CV_32FC2, new Float32Array([
+        quad[0].x, quad[0].y,
+        quad[1].x, quad[1].y,
+        quad[2].x, quad[2].y,
+        quad[3].x, quad[3].y,
+      ]));
+      const dstTri = cv.matFromArray(4, 1, cv.CV_32FC2, new Float32Array([
+        0, 0,
+        dstW - 1, 0,
+        dstW - 1, dstH - 1,
+        0, dstH - 1,
+      ]));
+
+      const M = cv.getPerspectiveTransform(srcTri, dstTri);
+      const warped = new cv.Mat();
+      cv.warpPerspective(src, warped, M, new cv.Size(dstW, dstH), cv.INTER_CUBIC, cv.BORDER_REPLICATE);
+
+      // (Optional) post-process to enhance contrast
+      const warpedGray = new cv.Mat();
+      const warpedBw = new cv.Mat();
+      cv.cvtColor(warped, warpedGray, cv.COLOR_RGBA2GRAY, 0);
+      cv.adaptiveThreshold(
+        warpedGray, warpedBw,
+        255, cv.ADAPTIVE_THRESH_MEAN_C, cv.THRESH_BINARY, 17, 7
+      );
+
+      const outCanvas = toCanvas(warpedBw);
+
+      // --- debug outputs ---
+      let debugCanvases;
+      if (debug) {
+        const dbgContours = new cv.Mat.zeros(src.rows, src.cols, cv.CV_8UC3);
+        for (let i = 0; i < contours.size(); i++) {
+          cv.drawContours(dbgContours, contours, i, new cv.Scalar(0, 255, 0, 255), 1);
+        }
+        // draw chosen quad in blue
+        const quadMat = quad.reduce((arr, p) => arr.concat([p.x, p.y]), []);
+        const q = cv.matFromArray(4, 1, cv.CV_32SC2, quadMat);
+        cv.polylines(dbgContours, q, true, new cv.Scalar(255, 0, 0, 255), 3);
+
+        debugCanvases = {
+          src: toCanvas(src),
+          gray: toCanvas(gray),
+          thresh: toCanvas(thresh),
+          edges: toCanvas(edges),
+          contours: toCanvas(dbgContours),
+          warped: toCanvas(warped),
+          warped_bw: outCanvas,
+        };
+        dbgContours.delete(); q.delete();
+      }
+
+      // cleanup mats
+      src.delete(); gray.delete(); blurred.delete(); edges.delete();
+      thresh.delete(); contours.delete(); hierarchy.delete();
+      srcTri.delete(); dstTri.delete(); M.delete();
+      warped.delete(); warpedGray.delete();
+      warpedBw.delete();
+
+      return { canvas: outCanvas, quad, ...(debug ? { debug: debugCanvases } : {}) };
+    }
+
+    function detectCornersAndWarp(imageCanvas) {
+      if (!openCvReady || !cv) {
+        console.warn('OpenCV not ready, corner detection disabled');
+        return imageCanvas;
+      }
+
+      console.log('Starting professional document detection on image:', imageCanvas.width + 'x' + imageCanvas.height);
+
+      try {
+        // Use the professional detectAndWarpPage function
+        const result = detectAndWarpPage(imageCanvas, {
+          canny1: 75,
+          canny2: 200,
+          blur: 5,
+          minAreaRatio: 0.1, // More tolerant for distant documents
+          debug: false
+        });
+
+        if (result.quad) {
+          console.log('Professional document detection succeeded! Found quad:', result.quad);
+          return result.canvas;
+        } else {
+          console.log('Professional document detection found no quad, but returning processed image');
+          return result.canvas; // Still returns a processed version
+        }
+
+      } catch (error) {
+        console.error('Professional document detection error:', error);
+        return imageCanvas;
+      }
+    }
+
+
+
+
+    // Legacy functions removed - now using professional detectAndWarpPage function
+
+    function boundingRectMethod(imageCanvas) {
+      console.log('Trying OpenCV boundingRect (axis-aligned bounding box)...');
+      
+      try {
+        const src = cv.imread(imageCanvas);
+        const gray = new cv.Mat();
+        const edges = new cv.Mat();
+        const contours = new cv.MatVector();
+        const hierarchy = new cv.Mat();
+
+        // Convert to grayscale
+        cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
+
+        // Use Canny edge detection
+        cv.Canny(gray, edges, 50, 150);
+
+        // Find contours
+        cv.findContours(edges, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+        
+        console.log('boundingRect found', contours.size(), 'contours');
+
+        const imageArea = imageCanvas.width * imageCanvas.height;
+        let bestRect = null;
+        let maxArea = 0;
+
+        // Look for the largest contour that could be a document
+        for (let i = 0; i < contours.size(); i++) {
+          const contour = contours.get(i);
+          const area = cv.contourArea(contour);
+          
+          // Skip very small or very large contours - more tolerant for distant documents
+          if (area < imageArea * 0.02 || area > imageArea * 0.98) continue;
+          
+          // Get axis-aligned bounding rectangle
+          const rect = cv.boundingRect(contour);
+          const rectArea = rect.width * rect.height;
+          
+          console.log('Contour', i, 'area:', area, 'bounding rect:', rect);
+          
+          // More tolerant area threshold for distant documents
+          if (rectArea > maxArea && rectArea > imageArea * 0.02) {
+            maxArea = rectArea;
+            bestRect = rect;
+          }
+        }
+
+        if (bestRect) {
+          console.log('Found best bounding rectangle:', bestRect);
+          
+          // Convert bounding rect to 4 corner points
+          const corners = [
+            [bestRect.x, bestRect.y],                                    // top-left
+            [bestRect.x + bestRect.width, bestRect.y],                   // top-right
+            [bestRect.x + bestRect.width, bestRect.y + bestRect.height], // bottom-right
+            [bestRect.x, bestRect.y + bestRect.height]                   // bottom-left
+          ];
+          
+          console.log('boundingRect corners:', corners);
+          
+          // Add breathing room to corners
+          const expandedCorners = addBreathingRoom(corners, imageCanvas.width, imageCanvas.height, 0.05);
+          
+          console.log('Original corners:', corners);
+          console.log('Expanded corners:', expandedCorners);
+          
+          // Validate corners
+          if (isValidQuadrilateral(expandedCorners, imageCanvas.width, imageCanvas.height)) {
+            const result = performPerspectiveTransform(src, expandedCorners);
+            if (result) {
+              console.log('boundingRect method succeeded!');
+              // Clean up
+              gray.delete();
+              edges.delete();
+              contours.delete();
+              hierarchy.delete();
+              return result;
+            }
+          }
+        }
+
+        // Clean up
+        src.delete();
+        gray.delete();
+        edges.delete();
+        contours.delete();
+        hierarchy.delete();
+
+        console.log('boundingRect method failed');
+        return null;
+
+      } catch (error) {
+        console.error('boundingRect method error:', error);
+        return null;
+      }
+    }
+
+    function convexHullBoundingMethod(imageCanvas) {
+      console.log('Trying OpenCV convex hull bounding method...');
+      
+      try {
+        const src = cv.imread(imageCanvas);
+        const gray = new cv.Mat();
+        const binary = new cv.Mat();
+        const contours = new cv.MatVector();
+        const hierarchy = new cv.Mat();
+
+        // Convert to grayscale
+        cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
+
+        // Apply adaptive threshold
+        cv.adaptiveThreshold(gray, binary, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY, 11, 2);
+
+        // Find contours
+        cv.findContours(binary, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+        
+        console.log('convex hull method found', contours.size(), 'contours');
+
+        const imageArea = imageCanvas.width * imageCanvas.height;
+
+        // Look for the largest suitable contour
+        for (let i = 0; i < contours.size(); i++) {
+          const contour = contours.get(i);
+          const area = cv.contourArea(contour);
+          
+          // Skip very small or very large contours - more tolerant for distant documents  
+          if (area < imageArea * 0.02 || area > imageArea * 0.98) continue;
+          
+          // Get convex hull of the contour
+          const hull = new cv.Mat();
+          cv.convexHull(contour, hull);
+          
+          // Get bounding rectangle of the convex hull
+          const hullRect = cv.boundingRect(hull);
+          
+          console.log('Contour', i, 'hull bounding rect:', hullRect);
+          
+          // More tolerant size requirements for distant documents
+          if (hullRect.width > imageCanvas.width * 0.1 && hullRect.height > imageCanvas.height * 0.1) {
+            const corners = [
+              [hullRect.x, hullRect.y],
+              [hullRect.x + hullRect.width, hullRect.y],
+              [hullRect.x + hullRect.width, hullRect.y + hullRect.height],
+              [hullRect.x, hullRect.y + hullRect.height]
+            ];
+            
+            console.log('convex hull corners:', corners);
+            
+            // Add breathing room to corners
+            const expandedCorners = addBreathingRoom(corners, imageCanvas.width, imageCanvas.height, 0.05);
+            
+            console.log('Original corners:', corners);
+            console.log('Expanded corners:', expandedCorners);
+            
+            if (isValidQuadrilateral(expandedCorners, imageCanvas.width, imageCanvas.height)) {
+              const result = performPerspectiveTransform(src, expandedCorners);
+              if (result) {
+                console.log('convex hull bounding method succeeded!');
+                hull.delete();
+                // Clean up
+                gray.delete();
+                binary.delete();
+                contours.delete();
+                hierarchy.delete();
+                return result;
+              }
+            }
+          }
+          
+          hull.delete();
+        }
+
+        // Clean up
+        src.delete();
+        gray.delete();
+        binary.delete();
+        contours.delete();
+        hierarchy.delete();
+
+        console.log('convex hull bounding method failed');
+        return null;
+
+      } catch (error) {
+        console.error('convex hull bounding method error:', error);
+        return null;
+      }
+    }
+
+
+    function isValidQuadrilateral(corners, width, height) {
+      // Check if all corners are within image bounds
+      for (const corner of corners) {
+        if (corner[0] < 0 || corner[0] > width || corner[1] < 0 || corner[1] > height) {
+          console.log('Invalid corner outside bounds:', corner, 'Image size:', width + 'x' + height);
+          return false;
+        }
+      }
+      
+      // Check if quadrilateral has reasonable area - more tolerant for distant documents
+      try {
+        const contour = cv.matFromArray(4, 1, cv.CV_32SC2, corners.flat());
+        const area = cv.contourArea(contour);
+        contour.delete();
+        
+        const imageArea = width * height;
+        const minArea = imageArea * 0.01; // Much more tolerant - 1% minimum
+        const maxArea = imageArea * 0.99; // Allow almost full image
+        
+        console.log('Quadrilateral area:', area, 'Min area:', minArea, 'Max area:', maxArea);
+        
+        if (area < minArea) {
+          console.log('Area too small');
+          return false;
+        }
+        if (area > maxArea) {
+          console.log('Area too large');
+          return false;
+        }
+        
+        return true;
+      } catch (error) {
+        console.log('Area calculation error:', error);
+        return false;
+      }
+    }
+
+    function addBreathingRoom(corners, width, height, margin) {
+      // Calculate center point
+      const centerX = corners.reduce((sum, corner) => sum + corner[0], 0) / 4;
+      const centerY = corners.reduce((sum, corner) => sum + corner[1], 0) / 4;
+      
+      // Expand each corner outward from center
+      const expandedCorners = corners.map(corner => {
+        const dx = corner[0] - centerX;
+        const dy = corner[1] - centerY;
+        
+        const newX = corner[0] + dx * margin;
+        const newY = corner[1] + dy * margin;
+        
+        // Clamp to image boundaries
+        return [
+          Math.max(0, Math.min(width, newX)),
+          Math.max(0, Math.min(height, newY))
+        ];
+      });
+      
+      return expandedCorners;
+    }
+
+    function shadowBasedDetection(imageCanvas) {
+      console.log('Trying shadow-based document detection...');
+      
+      try {
+        const src = cv.imread(imageCanvas);
+        const gray = new cv.Mat();
+        const lab = new cv.Mat();
+        const lightness = new cv.Mat();
+        const thresh = new cv.Mat();
+        const contours = new cv.MatVector();
+        const hierarchy = new cv.Mat();
+
+        // Convert to grayscale
+        cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
+
+        // Convert to LAB color space to better detect shadows
+        cv.cvtColor(src, lab, cv.COLOR_RGBA2Lab);
+        
+        // Extract the L (lightness) channel - shadows will be darker
+        const channels = new cv.MatVector();
+        cv.split(lab, channels);
+        lightness.copyTo(channels.get(0));
+
+        // Use adaptive threshold on lightness to detect shadow boundaries
+        cv.adaptiveThreshold(lightness, thresh, 255, cv.ADAPTIVE_THRESH_MEAN_C, cv.THRESH_BINARY_INV, 21, 10);
+
+        // Morphological operations to connect shadow edges
+        const kernel = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(5, 5));
+        cv.morphologyEx(thresh, thresh, cv.MORPH_CLOSE, kernel);
+        cv.morphologyEx(thresh, thresh, cv.MORPH_OPEN, kernel);
+
+        // Find contours
+        cv.findContours(thresh, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+        
+        console.log('Shadow-based detection found', contours.size(), 'shadow contours');
+
+        const imageArea = imageCanvas.width * imageCanvas.height;
+
+        // Look for shadow contours that could indicate document boundaries
+        for (let i = 0; i < contours.size(); i++) {
+          const contour = contours.get(i);
+          const area = cv.contourArea(contour);
+          
+          // Look for medium-sized shadows
+          if (area > imageArea * 0.05 && area < imageArea * 0.8) {
+            // Try to approximate to a quadrilateral
+            const perimeter = cv.arcLength(contour, true);
+            const approx = new cv.Mat();
+            cv.approxPolyDP(contour, approx, 0.02 * perimeter, true);
+            
+            if (approx.rows === 4) {
+              // Extract corners
+              const corners = [];
+              for (let j = 0; j < 4; j++) {
+                const x = approx.intPtr(j, 0)[0];
+                const y = approx.intPtr(j, 0)[1];
+                corners.push([x, y]);
+              }
+              
+              console.log('Shadow-based corners:', corners);
+              
+              // Add breathing room
+              const expandedCorners = addBreathingRoom(corners, imageCanvas.width, imageCanvas.height, 0.05);
+              
+              if (isValidQuadrilateral(expandedCorners, imageCanvas.width, imageCanvas.height)) {
+                const result = performPerspectiveTransform(src, expandedCorners);
+                if (result) {
+                  console.log('Shadow-based detection succeeded!');
+                  approx.delete();
+                  kernel.delete();
+                  channels.delete();
+                  src.delete();
+                  gray.delete();
+                  lab.delete();
+                  lightness.delete();
+                  thresh.delete();
+                  contours.delete();
+                  hierarchy.delete();
+                  return result;
+                }
+              }
+            }
+            
+            approx.delete();
+          }
+        }
+
+        // Clean up
+        kernel.delete();
+        channels.delete();
+        src.delete();
+        gray.delete();
+        lab.delete();
+        lightness.delete();
+        thresh.delete();
+        contours.delete();
+        hierarchy.delete();
+
+        console.log('Shadow-based detection failed');
+        return null;
+
+      } catch (error) {
+        console.error('Shadow-based detection error:', error);
+        return null;
+      }
+    }
+
+    function gradientBasedDetection(imageCanvas) {
+      console.log('Trying gradient-based document detection...');
+      
+      try {
+        const src = cv.imread(imageCanvas);
+        const gray = new cv.Mat();
+        const gradX = new cv.Mat();
+        const gradY = new cv.Mat();
+        const grad = new cv.Mat();
+        const thresh = new cv.Mat();
+        const contours = new cv.MatVector();
+        const hierarchy = new cv.Mat();
+
+        // Convert to grayscale
+        cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
+
+        // Calculate gradients in X and Y directions
+        cv.Sobel(gray, gradX, cv.CV_16S, 1, 0, 3);
+        cv.Sobel(gray, gradY, cv.CV_16S, 0, 1, 3);
+
+        // Convert back to CV_8U
+        cv.convertScaleAbs(gradX, gradX);
+        cv.convertScaleAbs(gradY, gradY);
+
+        // Combine gradients
+        cv.addWeighted(gradX, 0.5, gradY, 0.5, 0, grad);
+
+        // Threshold the gradient image
+        cv.threshold(grad, thresh, 50, 255, cv.THRESH_BINARY);
+
+        // Morphological operations to connect edges
+        const kernel = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(3, 3));
+        cv.morphologyEx(thresh, thresh, cv.MORPH_CLOSE, kernel);
+
+        // Find contours
+        cv.findContours(thresh, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+        
+        console.log('Gradient-based detection found', contours.size(), 'gradient contours');
+
+        const imageArea = imageCanvas.width * imageCanvas.height;
+
+        // Look for the largest suitable contour
+        let bestContour = null;
+        let maxArea = 0;
+
+        for (let i = 0; i < contours.size(); i++) {
+          const contour = contours.get(i);
+          const area = cv.contourArea(contour);
+          
+          if (area > imageArea * 0.02 && area < imageArea * 0.8 && area > maxArea) {
+            // Try to approximate to quadrilateral
+            const perimeter = cv.arcLength(contour, true);
+            const approx = new cv.Mat();
+            cv.approxPolyDP(contour, approx, 0.02 * perimeter, true);
+            
+            if (approx.rows === 4) {
+              maxArea = area;
+              if (bestContour) bestContour.delete();
+              bestContour = approx.clone();
+            }
+            
+            approx.delete();
+          }
+        }
+
+        if (bestContour) {
+          // Extract corners
+          const corners = [];
+          for (let i = 0; i < 4; i++) {
+            const x = bestContour.intPtr(i, 0)[0];
+            const y = bestContour.intPtr(i, 0)[1];
+            corners.push([x, y]);
+          }
+          
+          console.log('Gradient-based corners:', corners);
+          
+          // Add breathing room
+          const expandedCorners = addBreathingRoom(corners, imageCanvas.width, imageCanvas.height, 0.05);
+          
+          if (isValidQuadrilateral(expandedCorners, imageCanvas.width, imageCanvas.height)) {
+            const result = performPerspectiveTransform(src, expandedCorners);
+            if (result) {
+              console.log('Gradient-based detection succeeded!');
+              bestContour.delete();
+              kernel.delete();
+              src.delete();
+              gray.delete();
+              gradX.delete();
+              gradY.delete();
+              grad.delete();
+              thresh.delete();
+              contours.delete();
+              hierarchy.delete();
+              return result;
+            }
+          }
+          
+          bestContour.delete();
+        }
+
+        // Clean up
+        kernel.delete();
+        src.delete();
+        gray.delete();
+        gradX.delete();
+        gradY.delete();
+        grad.delete();
+        thresh.delete();
+        contours.delete();
+        hierarchy.delete();
+
+        console.log('Gradient-based detection failed');
+        return null;
+
+      } catch (error) {
+        console.error('Gradient-based detection error:', error);
+        return null;
+      }
+    }
+
+    function findDocumentCorners(points, width, height) {
+      if (points.length < 4) return null;
+      
+      // Find corners using convex hull
+      try {
+        const pointsMat = cv.matFromArray(points.length, 1, cv.CV_32FC2, points.flat());
+        const hull = new cv.Mat();
+        cv.convexHull(pointsMat, hull);
+        
+        if (hull.rows >= 4) {
+          // Get extreme points from convex hull
+          const hullPoints = [];
+          for (let i = 0; i < hull.rows; i++) {
+            const idx = hull.data32S[i];
+            hullPoints.push(points[idx]);
+          }
+          
+          // Find 4 extreme corners
+          const corners = findExtremePoints(hullPoints);
+          
+          pointsMat.delete();
+          hull.delete();
+          
+          return corners;
+        }
+        
+        pointsMat.delete();
+        hull.delete();
+        
+      } catch (error) {
+        console.error('Error finding document corners:', error);
+      }
+      
+      // Fallback: just find extreme points directly
+      return findExtremePoints(points);
+    }
+
+
+    function findExtremePoints(points) {
+      // Find the 4 extreme points: top-left, top-right, bottom-left, bottom-right
+      let topLeft = points[0], topRight = points[0], bottomLeft = points[0], bottomRight = points[0];
+      
+      for (const point of points) {
+        if (point[0] + point[1] < topLeft[0] + topLeft[1]) topLeft = point;
+        if (point[0] - point[1] > topRight[0] - topRight[1]) topRight = point;
+        if (point[0] + point[1] > bottomRight[0] + bottomRight[1]) bottomRight = point;
+        if (point[0] - point[1] < bottomLeft[0] - bottomLeft[1]) bottomLeft = point;
+      }
+      
+      return [topLeft, topRight, bottomRight, bottomLeft];
+    }
+
+    function validateCorners(corners, width, height) {
+      // Check if corners are reasonable
+      for (const corner of corners) {
+        if (corner[0] < 0 || corner[0] > width || corner[1] < 0 || corner[1] > height) {
+          return false;
+        }
+      }
+      
+      // Check if the quadrilateral has reasonable area
+      const area = cv.contourArea(cv.matFromArray(corners.length, 1, cv.CV_32SC2, corners.flat()));
+      const imageArea = width * height;
+      return area > imageArea * 0.05; // At least 5% of image
+    }
+
+    function performPerspectiveTransform(src, corners) {
+      try {
+        // Order corners: top-left, top-right, bottom-right, bottom-left
+        const orderedCorners = orderCorners(corners);
+        console.log('Ordered corners:', orderedCorners);
+
+        // Create destination points for perspective transform
+        const width = Math.max(
+          distance(orderedCorners[0], orderedCorners[1]),
+          distance(orderedCorners[2], orderedCorners[3])
+        );
+        const height = Math.max(
+          distance(orderedCorners[1], orderedCorners[2]),
+          distance(orderedCorners[3], orderedCorners[0])
+        );
+
+        console.log('Target dimensions:', width + 'x' + height);
+
+        const dstCorners = [
+          [0, 0],
+          [width, 0],
+          [width, height],
+          [0, height]
+        ];
+
+        // Perform perspective transform
+        const transformMatrix = cv.getPerspectiveTransform(
+          cv.matFromArray(4, 1, cv.CV_32FC2, orderedCorners.flat()),
+          cv.matFromArray(4, 1, cv.CV_32FC2, dstCorners.flat())
+        );
+
+        const warped = new cv.Mat();
+        cv.warpPerspective(src, warped, transformMatrix, new cv.Size(width, height));
+
+        // Convert back to canvas
+        const warpedCanvas = document.createElement('canvas');
+        cv.imshow(warpedCanvas, warped);
+
+        // Clean up
+        transformMatrix.delete();
+        warped.delete();
+
+        return warpedCanvas;
+      } catch (error) {
+        console.error('Perspective transform error:', error);
+        return null;
+      }
+    }
+
+
+    function orderCorners(corners) {
+      // Sort by sum (top-left has smallest sum, bottom-right has largest)
+      const sums = corners.map((c, i) => ({ sum: c[0] + c[1], index: i, corner: c }));
+      sums.sort((a, b) => a.sum - b.sum);
+      
+      const topLeft = sums[0].corner;
+      const bottomRight = sums[3].corner;
+      
+      // Sort by difference (top-right has smallest diff, bottom-left has largest)
+      const diffs = corners.map((c, i) => ({ diff: c[0] - c[1], index: i, corner: c }));
+      diffs.sort((a, b) => a.diff - b.diff);
+      
+      const topRight = diffs[3].corner;
+      const bottomLeft = diffs[0].corner;
+      
+      return [topLeft, topRight, bottomRight, bottomLeft];
+    }
+
+    function distance(point1, point2) {
+      return Math.sqrt(Math.pow(point2[0] - point1[0], 2) + Math.pow(point2[1] - point1[1], 2));
+    }
   </script>
 </body>
 </html>
