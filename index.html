@@ -141,7 +141,7 @@
 
     <div class="filename-section">
       <label for="filenameInput">Filename:</label>
-      <input type="text" id="filenameInput" value="images" placeholder="Enter filename">
+      <input type="text" id="filenameInput" value="imgtopdf" placeholder="Enter filename">
       <label for="cornerDetectionCheckbox" style="margin-left: 20px;">
         <input type="checkbox" id="cornerDetectionCheckbox" style="margin-right: 5px;">
         Corner Detection & Warp (Experimental)
@@ -398,7 +398,7 @@
         
         makeBtn.textContent = 'Generating PDF…';
         const bytes=await pdf.save();const blob=new Blob([bytes],{type:'application/pdf'});const url=URL.createObjectURL(blob);
-        const filename=filenameInput.value.trim()||'images';
+        const filename=filenameInput.value.trim()||'imgtopdf';
         const a=document.createElement('a');a.href=url;a.download=filename+'.pdf';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1200);}
       catch(e){alert(e.message||'Failed');}
       finally{makeBtn.disabled=images.length===0;makeBtn.textContent='Download PDF';}
